@@ -27,6 +27,9 @@ class ToolSettings(BaseSettings):
     modal_token_id: str | None = Field(default=None, description="Token id for using Modal as a tool sandbox")
     modal_token_secret: str | None = Field(default=None, description="Token secret for using Modal as a tool sandbox")
 
+    tensorlake_api_key: str | None = Field(default=None, description="API key for using Tensorlake as a tool sandbox")
+    tensorlake_snapshot_id: str | None = Field(default=None, description="Tensorlake snapshot ID with letta pre-installed. When set, new sandboxes boot from this snapshot and skip the letta pip install.")
+
     # Search Providers
     tavily_api_key: str | None = Field(default=None, description="API key for using Tavily as a search provider.")
     exa_api_key: str | None = Field(default=None, description="API key for using Exa as a search provider.")
@@ -63,12 +66,16 @@ class ToolSettings(BaseSettings):
         """Default sandbox type based on available credentials.
 
         Note: Modal is checked separately via modal_sandbox_enabled property.
-        This property determines the fallback behavior (E2B or LOCAL).
+        This property determines the fallback behavior (Tensorlake, E2B, or LOCAL).
         """
+        if self.tensorlake_api_key:
+            import importlib.util
+
+            if importlib.util.find_spec("tensorlake") is not None:
+                return SandboxType.TENSORLAKE
         if self.e2b_api_key:
             return SandboxType.E2B
-        else:
-            return SandboxType.LOCAL
+        return SandboxType.LOCAL
 
 
 class SummarizerSettings(BaseSettings):

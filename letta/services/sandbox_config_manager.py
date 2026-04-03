@@ -15,6 +15,7 @@ from letta.schemas.sandbox_config import (
     E2BSandboxConfig,
     LocalSandboxConfig,
     ModalSandboxConfig,
+    TensorlakeSandboxConfig,
     SandboxConfig as PydanticSandboxConfig,
     SandboxConfigCreate,
     SandboxConfigUpdate,
@@ -43,6 +44,12 @@ class SandboxConfigManager:
                 default_config = E2BSandboxConfig()
             elif sandbox_type == SandboxType.MODAL:
                 default_config = ModalSandboxConfig()
+            elif sandbox_type == SandboxType.TENSORLAKE:
+                from letta.settings import tool_settings
+
+                default_config = TensorlakeSandboxConfig(
+                    snapshot_id=tool_settings.tensorlake_snapshot_id or None,
+                )
             else:
                 # LOCAL sandbox type
                 default_local_sandbox_path = LETTA_TOOL_EXECUTION_DIR
@@ -64,6 +71,12 @@ class SandboxConfigManager:
                 default_config = E2BSandboxConfig()
             elif sandbox_type == SandboxType.MODAL:
                 default_config = ModalSandboxConfig()
+            elif sandbox_type == SandboxType.TENSORLAKE:
+                from letta.settings import tool_settings
+
+                default_config = TensorlakeSandboxConfig(
+                    snapshot_id=tool_settings.tensorlake_snapshot_id or None,
+                )
             else:
                 # LOCAL sandbox type
                 default_local_sandbox_path = LETTA_TOOL_EXECUTION_DIR

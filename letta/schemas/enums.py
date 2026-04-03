@@ -263,6 +263,7 @@ class SandboxType(str, Enum):
     E2B = "e2b"
     MODAL = "modal"
     LOCAL = "local"
+    TENSORLAKE = "tensorlake"
 
 
 class StepStatus(str, Enum):

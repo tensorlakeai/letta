@@ -59,6 +59,15 @@ async def create_default_local_sandbox_config(
     return await server.sandbox_config_manager.get_or_create_default_sandbox_config_async(sandbox_type=SandboxType.LOCAL, actor=actor)
 
 
+@router.post("/tensorlake/default", response_model=PydanticSandboxConfig)
+async def create_default_tensorlake_sandbox_config(
+    server: SyncServer = Depends(get_letta_server),
+    headers: HeaderParams = Depends(get_headers),
+):
+    actor = await server.user_manager.get_actor_or_default_async(actor_id=headers.actor_id)
+    return await server.sandbox_config_manager.get_or_create_default_sandbox_config_async(sandbox_type=SandboxType.TENSORLAKE, actor=actor)
+
+
 @router.post("/local", response_model=PydanticSandboxConfig)
 async def create_custom_local_sandbox_config(
     local_sandbox_config: LocalSandboxConfig,

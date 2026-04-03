@@ -66,8 +66,14 @@ class AsyncToolSandboxE2B(AsyncToolSandboxBase):
             sbx_config = await self.sandbox_config_manager.get_or_create_default_sandbox_config_async(
                 sandbox_type=SandboxType.E2B, actor=self.user
             )
-        # TODO: So this defaults to force recreating always
-        # TODO: Eventually, provision one sandbox PER agent, and that agent re-uses that one specifically
+        # E2B sandboxes are ephemeral: a fresh sandbox is created for every tool call and
+        # killed in the finally block below.  This means no filesystem or package state
+        # carries over between tool calls — each execution starts from a clean image.
+        #
+        # If you need persistent, agent-scoped sandboxes (files and installed packages
+        # survive across tool calls for the same agent), use the Tensorlake sandbox instead.
+        # AsyncToolSandboxTensorlake creates named sandboxes keyed to the agent_id,
+        # enabling Tensorlake's suspend/resume lifecycle for persistent state.
         e2b_sandbox = await self.create_e2b_sandbox_with_metadata_hash(sandbox_config=sbx_config)
 
         logger.info(f"E2B Sandbox configurations: {sbx_config}")

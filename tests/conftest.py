@@ -220,6 +220,28 @@ def check_modal_key_is_set():
 
 
 @pytest.fixture
+def check_tensorlake_key_is_set():
+    from letta.settings import tool_settings
+
+    assert tool_settings.tensorlake_api_key is not None, "Missing TENSORLAKE_API_KEY! Cannot execute these tests."
+    yield
+
+
+@pytest.fixture
+def disable_tensorlake_api_key() -> Generator[None, None, None]:
+    """
+    Temporarily disables the Tensorlake API key by setting `tool_settings.tensorlake_api_key` to None
+    for the duration of the test. Restores the original value afterward.
+    """
+    from letta.settings import tool_settings
+
+    original_api_key = tool_settings.tensorlake_api_key
+    tool_settings.tensorlake_api_key = None
+    yield
+    tool_settings.tensorlake_api_key = original_api_key
+
+
+@pytest.fixture
 async def default_organization():
     """Fixture to create and return the default organization."""
     manager = OrganizationManager()

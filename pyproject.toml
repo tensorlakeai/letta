@@ -131,6 +131,7 @@ dev = [
 # ====== Other ======
 cloud-tool-sandbox = ["e2b-code-interpreter>=1.0.3"]  # TODO: make this more explicitly e2b
 modal = ["modal>=1.1.0"]
+tensorlake = ["tensorlake>=0.4.34"]
 external-tools = [
     "docker>=7.1.0",
     "langchain>=0.3.7",

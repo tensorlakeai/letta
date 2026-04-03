@@ -98,9 +98,35 @@ class SandboxToolExecutor(ToolExecutor):
                     logger.warning(f"Modal execution failed for tool {tool.name}: {e}. Falling back to {tool_settings.sandbox_type.value}")
                     tool_execution_result = None
 
-            # Fallback to E2B or LOCAL if Modal wasn't tried or failed
+            # Fallback to Tensorlake, E2B, or LOCAL if Modal wasn't tried or failed
             if tool_execution_result is None:
-                if tool_settings.sandbox_type == SandboxType.E2B:
+                # TypeScript tools are not supported by Tensorlake. If Tensorlake is the
+                # configured sandbox and no E2B key is available, raise a clear error rather
+                # than silently routing to the local sandbox (which only supports Python).
+                if tool_settings.sandbox_type == SandboxType.TENSORLAKE and tool.source_type == "typescript" and not tool_settings.e2b_api_key:
+                    raise NotImplementedError(
+                        f"TypeScript tool '{function_name}' cannot run in the Tensorlake sandbox. "
+                        "Configure E2B_API_KEY or Modal to execute TypeScript tools."
+                    )
+                # TypeScript tools are not supported by Tensorlake; fall through to E2B/LOCAL.
+                tensorlake_eligible = tool_settings.sandbox_type == SandboxType.TENSORLAKE and tool.source_type != "typescript"
+                if tensorlake_eligible:
+                    from letta.services.tool_sandbox.tensorlake_sandbox import AsyncToolSandboxTensorlake
+
+                    sandbox = AsyncToolSandboxTensorlake(
+                        function_name,
+                        function_args,
+                        actor,
+                        tool_id=tool.id,
+                        agent_id=agent_state.id if agent_state else None,
+                        project_id=agent_state.project_id if agent_state else None,
+                        tool_object=tool,
+                        sandbox_config=sandbox_config,
+                        sandbox_env_vars=sandbox_env_vars,
+                    )
+                elif tool_settings.sandbox_type == SandboxType.E2B or (
+                    not tensorlake_eligible and tool_settings.e2b_api_key
+                ):
                     from letta.services.tool_sandbox.e2b_sandbox import AsyncToolSandboxE2B
 
                     sandbox = AsyncToolSandboxE2B(

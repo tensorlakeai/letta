@@ -90,6 +90,44 @@ class ModalSandboxConfig(BaseModel):
         return SandboxType.MODAL
 
 
+class TensorlakeSandboxConfig(BaseModel):
+    """Configuration for the Tensorlake sandbox provider.
+
+    **Persistence model** — unlike E2B (which creates a fresh sandbox for every tool
+    call), Tensorlake sandboxes are *persistent and agent-scoped*:
+
+    - The first tool call for an agent creates a **named** sandbox (``letta-agent-<id>``)
+      and caches its ID in memory.
+    - Subsequent tool calls for the *same* agent reconnect to the same sandbox.
+    - Because the sandbox is **named**, Tensorlake can suspend it when idle and resume
+      it on the next ``connect()`` call — installed packages and written files survive
+      across tool calls.  Unnamed (ephemeral) sandboxes do **not** support
+      suspend/resume and are terminated on timeout.
+    - If ``agent_id`` is not provided (e.g. a one-off tool execution), the sandbox is
+      created without a name (ephemeral) and terminated immediately after the call —
+      same behaviour as E2B.
+    - If the sandbox configuration changes (image, memory, pip_requirements, etc.) the
+      cached sandbox is evicted and a new one is created automatically.
+
+    This persistent model is useful for agents that accumulate state across multiple
+    tool invocations (e.g. writing intermediate files, building up an installed
+    environment). If you need a guaranteed clean slate on every call, use E2B instead.
+    """
+
+    image: Optional[str] = Field(None, description="Docker image for the sandbox. When None, Tensorlake uses its built-in default image.")
+    cpus: float = Field(1.0, description="Number of CPU cores for the sandbox. Memory must stay between 1024–8192 MB per CPU core.")
+    memory_mb: int = Field(2048, description="Memory limit for the sandbox (in MB). Must be between 1024–8192 per CPU core.")
+    timeout_secs: int = Field(900, description="Time limit for the sandbox (in seconds).")
+    allow_internet_access: bool = Field(True, description="Whether to allow internet access from the sandbox.")
+    pip_requirements: list[str] | None = Field(None, description="A list of pip packages to pre-install in the sandbox.")
+    ephemeral_disk_mb: int = Field(8192, description="Ephemeral disk size for the sandbox (in MB). Installing letta and its transitive dependencies requires several GB.")
+    snapshot_id: Optional[str] = Field(None, description="Tensorlake snapshot ID to boot from. When set, letta is assumed pre-installed in the snapshot and will not be re-installed at runtime, eliminating the cold-start pip install cost.")
+
+    @property
+    def type(self) -> "SandboxType":
+        return SandboxType.TENSORLAKE
+
+
 class SandboxConfigBase(OrmMetadataBase):
     __id_prefix__ = PrimitiveType.SANDBOX_CONFIG.value
 
@@ -110,6 +148,15 @@ class SandboxConfig(SandboxConfigBase):
 
     def get_modal_config(self) -> ModalSandboxConfig:
         return ModalSandboxConfig(**self.config)
+
+    def get_tensorlake_config(self) -> TensorlakeSandboxConfig:
+        config_dict = self.config.copy()
+        # Overlay the current env var so that setting TENSORLAKE_SNAPSHOT_ID takes
+        # effect even for orgs whose default config was created before the var was set
+        # (mirrors how get_e2b_config() overlays e2b_sandbox_template_id).
+        if tool_settings.tensorlake_snapshot_id:
+            config_dict["snapshot_id"] = tool_settings.tensorlake_snapshot_id
+        return TensorlakeSandboxConfig(**config_dict)
 
     def fingerprint(self) -> str:
         # Only take into account type, org_id, and the config items
@@ -132,12 +179,14 @@ class SandboxConfig(SandboxConfigBase):
 
 
 class SandboxConfigCreate(LettaBase):
-    config: Union[LocalSandboxConfig, E2BSandboxConfig, ModalSandboxConfig] = Field(..., description="The configuration for the sandbox.")
+    config: Union[LocalSandboxConfig, E2BSandboxConfig, ModalSandboxConfig, TensorlakeSandboxConfig] = Field(
+        ..., description="The configuration for the sandbox."
+    )
 
 
 class SandboxConfigUpdate(LettaBase):
     """Pydantic model for updating SandboxConfig fields."""
 
-    config: Union[LocalSandboxConfig, E2BSandboxConfig, ModalSandboxConfig] = Field(
+    config: Union[LocalSandboxConfig, E2BSandboxConfig, ModalSandboxConfig, TensorlakeSandboxConfig] = Field(
         None, description="The JSON configuration data for the sandbox."
     )
