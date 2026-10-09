@@ -28,8 +28,12 @@ jobs:
         with:
           submodules: true
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          package-manager-cache: false
       - name: Download Fern
-        run: npm install -g fern-api
+        run: "npm install --global --ignore-scripts pnpm@11.28.5\nmkdir -p \"$RUNNER_TEMP/fern-tools\"\npnpm --dir \"$RUNNER_TEMP/fern-tools\" \\\n  --config.minimumReleaseAge=1440 --config.minimumReleaseAgeStrict=true \\\n  --config.minimumReleaseAgeIgnoreMissingTime=false --config.trustLockfile=false \\\n  --config.blockExoticSubdeps=true --config.strictDepBuilds=true \\\n  --config.optimisticRepeatInstall=false \\\n  add --ignore-scripts --save-exact fern-api@5.148.2\necho \"$RUNNER_TEMP/fern-tools/node_modules/.bin\" >> \"$GITHUB_PATH\"\n"
 
       - name: Generate Python SDK
         working-directory: .
